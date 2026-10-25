@@ -16,12 +16,13 @@ for you.
 **TaskbarAutoHide.exe** turns auto-hide off and back on, then exits. Run this if you just want to fix the issue once. Next time the error pops up, run this again. It has no window and just fixes the issue and exits.
 
 **TaskbarAutoHideSettings.exe** creates a scheduled task that runs the fix
-automatically after the PC wakes up, and optionally when you sign in. You can set a delay for the fix in case your monitors take a while to connect. The default settings should be fine for most people. You can also use it to update or remove the task.
+automatically after the PC wakes up, and optionally when you sign in. You can set a delay for the fix in case your monitors take a while to connect. The default settings should be fine for most people. You can also use it to update or remove the task, or to just run the fix instantly once.
 
 ## Installation
 
-1. Download the latest release and extract it to a permanent folder, such as
-   `C:\TaskbarAutoHide`. Keep both .exe files together.
+1. [Download the latest release](https://github.com/achintyagk/TaskbarAutoHide/releases/latest)
+   and extract it to a permanent folder, such as `C:\TaskbarAutoHide`. Keep both
+   .exe files together.
 2. Run TaskbarAutoHideSettings.exe, choose your delays and click **Create task**.
 
 If you move the folder later, run TaskbarAutoHideSettings.exe again and click
