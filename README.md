@@ -31,7 +31,7 @@ Windows may show a SmartScreen warning the first time you run either program. Cl
 
 If you'd rather not, you can build the programs yourself (see below).
 
-## Uninstalling
+## Uninstallation
 
 Run TaskbarAutoHideSettings.exe, click **Remove task**, then delete the folder.
 
