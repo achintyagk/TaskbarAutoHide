@@ -19,8 +19,9 @@ for you.
 
 ## Installation
 
-1. Download the latest release and extract it to a permanent folder, such as
-   `C:\TaskbarAutoHide`. Keep both .exe files together.
+1. [Download the latest release](https://github.com/achintyagk/TaskbarAutoHide/releases/latest)
+   and extract it to a permanent folder, such as `C:\TaskbarAutoHide`. Keep both
+   .exe files together.
 2. Run TaskbarAutoHideSettings.exe, change the delay if required (defaults are fine for most people), and click **Create task**.
 
 If you move the folder later, run TaskbarAutoHideSettings.exe again and click **Save changes** so the task points to the new location.
