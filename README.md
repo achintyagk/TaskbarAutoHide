@@ -32,7 +32,7 @@ If you'd rather not, you can build the programs yourself (see below).
 
 ## Uninstalling
 
-Run TaskbarAutoHideSettings.exe, click **Remove task**, then delete the folder.
+Run TaskbarAutoHideSettings.exe, click **Remove task**, then delete the folder with the exe files.
 
 ## Requirements
 
