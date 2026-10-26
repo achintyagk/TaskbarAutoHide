@@ -14,8 +14,8 @@ using System.Xml;
 [assembly: AssemblyTitle("Taskbar Auto-Hide Settings")]
 [assembly: AssemblyProduct("Taskbar Auto-Hide")]
 [assembly: AssemblyCopyright("Copyright (c) 2026 Achintya Giridhar Kini (https://achintya.design/)")]
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyVersion("1.1.0.0")]
+[assembly: AssemblyFileVersion("1.1.0.0")]
 
 static class Program
 {
@@ -37,6 +37,8 @@ class TaskConfig
     public int ResumeDelay = 10;
     public bool RunAtSignIn = false;
     public int SignInDelay = 15;
+    public bool RunAtUnlock = false;
+    public int UnlockDelay = 5;
     public string ExePath;
 }
 
@@ -46,13 +48,19 @@ static class TaskManager
     const string Ns = "http://schemas.microsoft.com/windows/2004/02/mit/task";
     const int TASK_CREATE_OR_UPDATE = 6;
     const int TASK_LOGON_INTERACTIVE_TOKEN = 3;
+    const int TASK_TRIGGER_SESSION_STATE_CHANGE = 11;
+    const int TASK_SESSION_UNLOCK = 8;
+
+    static dynamic Service()
+    {
+        dynamic service = Activator.CreateInstance(Type.GetTypeFromProgID("Schedule.Service"));
+        service.Connect();
+        return service;
+    }
 
     static dynamic RootFolder()
     {
-        Type t = Type.GetTypeFromProgID("Schedule.Service");
-        dynamic service = Activator.CreateInstance(t);
-        service.Connect();
-        return service.GetFolder("\\");
+        return Service().GetFolder("\\");
     }
 
     public static TaskConfig Load()
@@ -90,6 +98,15 @@ static class TaskManager
             if (logonDelay != null) cfg.SignInDelay = ToSeconds(logonDelay.InnerText, 15);
         }
 
+        XmlNode unlock = doc.SelectSingleNode(
+            "//t:SessionStateChangeTrigger[t:StateChange='SessionUnlock']", nsm);
+        cfg.RunAtUnlock = unlock != null;
+        if (unlock != null)
+        {
+            XmlNode unlockDelay = unlock.SelectSingleNode("t:Delay", nsm);
+            if (unlockDelay != null) cfg.UnlockDelay = ToSeconds(unlockDelay.InnerText, 5);
+        }
+
         XmlNode cmd = doc.SelectSingleNode("//t:Exec/t:Command", nsm);
         if (cmd != null) cfg.ExePath = cmd.InnerText.Trim().Trim('"');
 
@@ -98,7 +115,20 @@ static class TaskManager
 
     public static void Save(TaskConfig cfg)
     {
-        RootFolder().RegisterTask(TaskName, BuildXml(cfg), TASK_CREATE_OR_UPDATE,
+        dynamic service = Service();
+        dynamic definition = service.NewTask(0);
+        definition.XmlText = BuildXml(cfg);
+
+        // Use Task Scheduler's API to build this trigger since its XML is order-sensitive.
+        if (cfg.RunAtUnlock)
+        {
+            dynamic trigger = definition.Triggers.Create(TASK_TRIGGER_SESSION_STATE_CHANGE);
+            trigger.StateChange = TASK_SESSION_UNLOCK;
+            trigger.UserId = WindowsIdentity.GetCurrent().Name;
+            trigger.Delay = "PT" + cfg.UnlockDelay + "S";
+        }
+
+        service.GetFolder("\\").RegisterTaskDefinition(TaskName, definition, TASK_CREATE_OR_UPDATE,
             null, null, TASK_LOGON_INTERACTIVE_TOKEN, null);
     }
 
@@ -137,7 +167,7 @@ static class TaskManager
             "<?xml version=\"1.0\" encoding=\"UTF-16\"?>\n" +
             "<Task version=\"1.2\" xmlns=\"" + Ns + "\">\n" +
             "  <RegistrationInfo>\n" +
-            "    <Description>Re-applies taskbar auto-hide after waking from sleep or hibernation. Managed by TaskbarAutoHideSettings.exe.</Description>\n" +
+            "    <Description>Re-applies taskbar auto-hide after waking from sleep or hibernation, and optionally at sign-in or unlock. Managed by TaskbarAutoHideSettings.exe.</Description>\n" +
             "  </RegistrationInfo>\n" +
             "  <Triggers>\n" +
             "    <EventTrigger>\n" +
@@ -176,11 +206,15 @@ static class TaskManager
 
 class SettingsForm : Form
 {
-    Label statusLabel, resumeValue, signInValue, pathLabel;
-    TrackBar resumeSlider, signInSlider;
-    CheckBox signInCheck;
+    Label statusLabel, resumeValue, signInValue, unlockValue, pathLabel;
+    TrackBar resumeSlider, signInSlider, unlockSlider;
+    CheckBox signInCheck, unlockCheck;
     Button saveButton, removeButton, runButton, closeButton;
     readonly string fixExePath;
+
+    // Last saved settings. Save is enabled only when something differs from last saved.
+    TaskConfig savedConfig;
+    bool fixExists, pathMismatch;
 
     public SettingsForm()
     {
@@ -198,7 +232,6 @@ class SettingsForm : Form
         AutoSizeMode = AutoSizeMode.GrowAndShrink;
         Padding = new Padding(12);
 
-        // AppIcon.ico is only embedded when build.bat finds icon.ico.
         Stream iconStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("AppIcon.ico");
         if (iconStream != null)
         {
@@ -224,7 +257,7 @@ class SettingsForm : Form
         };
         main.Controls.Add(statusLabel);
 
-        var wakeGroup = MakeGroup("When the PC wakes from sleep or hibernation");
+        var wakeGroup = MakeGroup("On wake from sleep or hibernation");
         var wakeLayout = MakeGroupLayout();
         resumeValue = new Label { AutoSize = true };
         wakeLayout.Controls.Add(MakeDelayRow("Wait before running:", resumeValue));
@@ -234,11 +267,11 @@ class SettingsForm : Form
         wakeGroup.Controls.Add(wakeLayout);
         main.Controls.Add(wakeGroup);
 
-        var signInGroup = MakeGroup("When I sign in");
+        var signInGroup = MakeGroup("On sign-in");
         var signInLayout = MakeGroupLayout();
         signInCheck = new CheckBox
         {
-            Text = "Also run when I sign in (covers restarts and shutdowns)",
+            Text = "Also run on sign-in (covers restarts and shutdowns)",
             AutoSize = true,
             Margin = new Padding(3, 3, 3, 6)
         };
@@ -251,6 +284,30 @@ class SettingsForm : Form
         signInCheck.CheckedChanged += delegate { signInSlider.Enabled = signInCheck.Checked; };
         signInGroup.Controls.Add(signInLayout);
         main.Controls.Add(signInGroup);
+
+        var unlockGroup = MakeGroup("On unlock");
+        var unlockLayout = MakeGroupLayout();
+        unlockCheck = new CheckBox
+        {
+            Text = "Also run on unlock (covers monitors that sleep while the PC is locked)",
+            AutoSize = true,
+            Margin = new Padding(3, 3, 3, 6)
+        };
+        unlockLayout.Controls.Add(unlockCheck);
+        unlockValue = new Label { AutoSize = true };
+        unlockLayout.Controls.Add(MakeDelayRow("Wait before running:", unlockValue));
+        unlockSlider = MakeSlider();
+        unlockSlider.ValueChanged += delegate { unlockValue.Text = DelayText(unlockSlider.Value); };
+        unlockLayout.Controls.Add(unlockSlider);
+        unlockCheck.CheckedChanged += delegate { unlockSlider.Enabled = unlockCheck.Checked; };
+        unlockGroup.Controls.Add(unlockLayout);
+        main.Controls.Add(unlockGroup);
+
+        resumeSlider.ValueChanged += delegate { UpdateSaveButton(); };
+        signInSlider.ValueChanged += delegate { UpdateSaveButton(); };
+        unlockSlider.ValueChanged += delegate { UpdateSaveButton(); };
+        signInCheck.CheckedChanged += delegate { UpdateSaveButton(); };
+        unlockCheck.CheckedChanged += delegate { UpdateSaveButton(); };
 
         pathLabel = new Label
         {
@@ -350,7 +407,7 @@ class SettingsForm : Form
         return header;
     }
 
-    // Renders the icon at display's physical size
+    // Render the icon at the screen's display size to avoid blurriness.
     static Bitmap RenderHeaderIcon()
     {
         Image source = LoadLargestIconFrame();
@@ -387,7 +444,7 @@ class SettingsForm : Form
         }
     }
 
-    // System.Drawing.Icon can't load PNG-compressed frames, so the 256 px frame is directly read.
+    // System.Drawing.Icon can't handle PNG-compressed frames, so the 256 px frame is directly read.
     static Image LoadLargestIconFrame()
     {
         Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("AppIcon.ico");
@@ -474,7 +531,7 @@ class SettingsForm : Form
         return row;
     }
 
-    // Slider steps 1..12 map to 5..60 seconds.
+    // Sliders go from 1 to 12 and get multiplied by 5, so 5 to 60 seconds.
     static TrackBar MakeSlider()
     {
         return new TrackBar
@@ -521,12 +578,16 @@ class SettingsForm : Form
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, "Couldn't read Task Scheduler:\n\n" + ex.Message,
-                Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            ShowError("read Task Scheduler", ex);
             cfg = null;
         }
 
-        bool fixExists = File.Exists(fixExePath);
+        savedConfig = cfg;
+        fixExists = File.Exists(fixExePath);
+        pathMismatch = cfg != null && !string.IsNullOrEmpty(cfg.ExePath) &&
+                       !string.Equals(SafeFullPath(cfg.ExePath), SafeFullPath(fixExePath),
+                                      StringComparison.OrdinalIgnoreCase);
+
         bool taskExists = cfg != null;
         TaskConfig shown = cfg ?? new TaskConfig();
 
@@ -539,37 +600,72 @@ class SettingsForm : Form
         resumeSlider.Value = SecondsToSteps(shown.ResumeDelay);
         signInCheck.Checked = shown.RunAtSignIn;
         signInSlider.Value = SecondsToSteps(shown.SignInDelay);
+        unlockCheck.Checked = shown.RunAtUnlock;
+        unlockSlider.Value = SecondsToSteps(shown.UnlockDelay);
 
-        // ValueChanged doesn't fire if the value is unchanged, so set the labels directly.
+        // ValueChanged won't fire if the value didn't change, so update the labels here too.
         resumeValue.Text = DelayText(resumeSlider.Value);
         signInValue.Text = DelayText(signInSlider.Value);
+        unlockValue.Text = DelayText(unlockSlider.Value);
         signInSlider.Enabled = signInCheck.Checked;
+        unlockSlider.Enabled = unlockCheck.Checked;
 
         if (!fixExists)
         {
             pathLabel.Text = "TaskbarAutoHide.exe was not found next to this program. " +
                              "Keep both .exe files in the same folder.";
             pathLabel.ForeColor = Color.Firebrick;
-            saveButton.Enabled = false;
-            runButton.Enabled = false;
         }
-        else if (cfg != null && !string.IsNullOrEmpty(cfg.ExePath) &&
-                 !string.Equals(SafeFullPath(cfg.ExePath), SafeFullPath(fixExePath),
-                                StringComparison.OrdinalIgnoreCase))
+        else if (pathMismatch)
         {
             pathLabel.Text = "The existing task points to:\n" + cfg.ExePath +
                              "\n\nClick Save changes to point it to this copy instead:\n" + fixExePath;
             pathLabel.ForeColor = Color.DarkOrange;
-            saveButton.Enabled = true;
-            runButton.Enabled = true;
         }
         else
         {
             pathLabel.Text = "Fix program: " + fixExePath;
             pathLabel.ForeColor = SystemColors.GrayText;
-            saveButton.Enabled = true;
-            runButton.Enabled = true;
         }
+
+        runButton.Enabled = fixExists;
+        UpdateSaveButton();
+    }
+
+    TaskConfig CurrentSettings()
+    {
+        return new TaskConfig
+        {
+            ResumeDelay = resumeSlider.Value * 5,
+            RunAtSignIn = signInCheck.Checked,
+            SignInDelay = signInSlider.Value * 5,
+            RunAtUnlock = unlockCheck.Checked,
+            UnlockDelay = unlockSlider.Value * 5,
+            ExePath = fixExePath
+        };
+    }
+
+    // Allow saving if there's no task yet, the task points to a different copy of the program, or any setting has changed.
+    void UpdateSaveButton()
+    {
+        if (!fixExists)
+        {
+            saveButton.Enabled = false;
+            return;
+        }
+        if (savedConfig == null || pathMismatch)
+        {
+            saveButton.Enabled = true;
+            return;
+        }
+
+        TaskConfig current = CurrentSettings();
+        saveButton.Enabled =
+            current.ResumeDelay != SecondsToSteps(savedConfig.ResumeDelay) * 5 ||
+            current.RunAtSignIn != savedConfig.RunAtSignIn ||
+            (current.RunAtSignIn && current.SignInDelay != SecondsToSteps(savedConfig.SignInDelay) * 5) ||
+            current.RunAtUnlock != savedConfig.RunAtUnlock ||
+            (current.RunAtUnlock && current.UnlockDelay != SecondsToSteps(savedConfig.UnlockDelay) * 5);
     }
 
     static string SafeFullPath(string p)
@@ -578,28 +674,23 @@ class SettingsForm : Form
         catch { return p; }
     }
 
+    void ShowError(string action, Exception ex)
+    {
+        MessageBox.Show(this, "Couldn't " + action + ":\n\n" + ex.Message,
+            Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
+    }
+
     void OnSave(object sender, EventArgs e)
     {
-        var cfg = new TaskConfig
-        {
-            ResumeDelay = resumeSlider.Value * 5,
-            RunAtSignIn = signInCheck.Checked,
-            SignInDelay = signInSlider.Value * 5,
-            ExePath = fixExePath
-        };
-
         try
         {
-            TaskManager.Save(cfg);
-            RefreshState();
-            MessageBox.Show(this, "Saved. Taskbar auto-hide will be re-applied automatically.",
-                Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+            TaskManager.Save(CurrentSettings());
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, "Couldn't save the scheduled task:\n\n" + ex.Message,
-                Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            ShowError("save the scheduled task", ex);
         }
+        RefreshState();
     }
 
     void OnRemove(object sender, EventArgs e)
@@ -615,8 +706,7 @@ class SettingsForm : Form
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, "Couldn't remove the scheduled task:\n\n" + ex.Message,
-                Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            ShowError("remove the scheduled task", ex);
         }
         RefreshState();
     }
@@ -629,8 +719,7 @@ class SettingsForm : Form
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, "Couldn't start TaskbarAutoHide.exe:\n\n" + ex.Message,
-                Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            ShowError("start TaskbarAutoHide.exe", ex);
         }
     }
 }

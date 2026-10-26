@@ -11,21 +11,15 @@ if not exist "%CSC%" (
     exit /b 1
 )
 
-set EXEICON=
-set WINICON=
-if exist "%~dp0icon.ico" set EXEICON=/win32icon:"%~dp0icon.ico"
-if exist "%~dp0icon.ico" set WINICON=/resource:"%~dp0icon.ico",AppIcon.ico
-
-if exist "%~dp0icon.ico" (echo Found icon.ico) else (echo No icon.ico found - using default icon)
-echo.
-
 echo Building TaskbarAutoHide.exe...
-"%CSC%" /nologo /target:winexe /optimize+ %EXEICON% ^
+"%CSC%" /nologo /target:winexe /optimize+ ^
+  /win32icon:"%~dp0icon.ico" ^
   /out:"%~dp0TaskbarAutoHide.exe" "%~dp0TaskbarAutoHide.cs"
 if errorlevel 1 goto fail
 
 echo Building TaskbarAutoHideSettings.exe...
-"%CSC%" /nologo /target:winexe /optimize+ %EXEICON% %WINICON% ^
+"%CSC%" /nologo /target:winexe /optimize+ ^
+  /win32icon:"%~dp0icon.ico" /resource:"%~dp0icon.ico",AppIcon.ico ^
   /r:System.dll /r:System.Core.dll /r:System.Drawing.dll ^
   /r:System.Windows.Forms.dll /r:System.Xml.dll /r:Microsoft.CSharp.dll ^
   /out:"%~dp0TaskbarAutoHideSettings.exe" "%~dp0TaskbarAutoHideSettings.cs"
