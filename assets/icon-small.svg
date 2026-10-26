@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120"><metadata><?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?><x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="XMP Core 6.0.0"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"><rdf:Description rdf:about="" xmlns:xmp="http://ns.adobe.com/xap/1.0/" xmlns:xmpMM="http://ns.adobe.com/xap/1.0/mm/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmpMM:DocumentID="xmp.did:cb9f5498-bb58-4572-8043-8c369e6bfb9b" xmpMM:InstanceID="xmp.iid:cb9f5498-bb58-4572-8043-8c369e6bfb9b" dcterms:provenance="https://cai-manifests.adobe.com/manifests/urn-c2pa-8e153ea2-ae3b-4f2e-a809-0af36acfe27d-adobe"> </rdf:Description></rdf:RDF></x:xmpmeta>
-<?xpacket end="w"?></metadata>
+<svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120">
   <g id="Layer_1-2" data-name="Layer 1">
     <g>
-      <rect width="160" height="120" rx="26" ry="26" fill="#0067c0"/>
-      <rect x="16" y="16" width="128" height="88" rx="12" ry="12" fill="#e8f3fc"/>
-      <path d="M34,104v-8c0-4.42,3.58-8,8-8h76c4.42,0,8,3.58,8,8v8H34Z" fill="#003e73"/>
-      <path d="M80,72.5c-2.06,0-4.12-.74-5.74-2.23l-24-22c-3.46-3.17-3.69-8.55-.52-12.01,3.17-3.46,8.55-3.69,12.01-.52l18.26,16.73,18.26-16.73c3.46-3.17,8.84-2.94,12.01.52,3.17,3.46,2.94,8.84-.52,12.01l-24,22c-1.62,1.49-3.68,2.23-5.74,2.23Z" fill="#0067c0"/>
+      <g>
+        <path d="M144,26v68c0,5.52-4.49,10-10,10H26c-5.52,0-10-4.48-10-10V26c0-5.51,4.48-10,10-10h108c5.51,0,10,4.49,10,10Z" fill="#e8f3fc"/>
+        <path d="M134,16c5.51,0,10,4.49,10,10v68c0,5.51-4.49,10-10,10H26c-5.51,0-10-4.49-10-10V26c0-5.51,4.49-10,10-10h108ZM134,0H26C11.64,0,0,11.64,0,26v68c0,14.36,11.64,26,26,26h108c14.36,0,26-11.64,26-26V26c0-14.36-11.64-26-26-26h0Z" fill="#0067c0"/>
+      </g>
+      <path d="M80,79.75c-2.25,0-4.42-.9-6.01-2.49l-22.5-22.5c-3.32-3.32-3.32-8.7,0-12.02,3.32-3.32,8.7-3.32,12.02,0l16.49,16.49,16.49-16.49c3.32-3.32,8.7-3.32,12.02,0,3.32,3.32,3.32,8.7,0,12.02l-22.5,22.5c-1.59,1.59-3.76,2.49-6.01,2.49Z" fill="#0067c0"/>
+      <path d="M80,50h8v92h-8c-4.42,0-8-3.58-8-8V58c0-4.42,3.58-8,8-8Z" transform="translate(176 16) rotate(90)" fill="#003e73"/>
     </g>
   </g>
 </svg>
