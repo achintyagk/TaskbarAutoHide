@@ -5,6 +5,8 @@ can show this error:
 
 <img src="assets/error.png" width="470" alt="Taskbar error: A toolbar is already hidden on this side of your screen. You can have only one auto-hide toolbar per side.">
 
+A toolbar is already hidden on this side of your screen. You can have only one auto-hide toolbar per side.
+
 After that, the taskbar stops auto-hiding until you go to Settings > Personalization >
 Taskbar and uncheck and recheck "Automatically hide the taskbar". This tool does that
 for you.
